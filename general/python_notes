@@ -1,0 +1,313 @@
+## -------------------------------
+## reading and writing files
+## -------------------------------
+
+# general file reading:
+with open(infile, 'r') as f:
+    line = f.readline()
+
+# reading in a csv to pandas df
+df = pd.read_csv(infile)
+
+# reading in a pkl to pandas df
+df = pd.read_pickle(pkl_file)
+
+# writing out a list to txt
+with open(outfile, 'w') as f:
+    f.write("\n".join(map(str, alist)))
+
+# writing out a column to txt
+with open(outfile, 'w') as f:
+    f.write('\n'.join(df['orthogroup']))
+
+# writing out a df to csv
+fdf.to_csv(outfile, index=False)
+
+# writing out a df to pkl
+fdf.to_pickle(outfile+'.pkl')
+
+## -------------------------------
+## one liner for reading a file to list
+## -------------------------------
+
+# note: do not do this inside a function reading a bunch of files
+# does not immediately close file, so for just for one off things
+file = '../ppi_ml/data/meta/euk_codes_ordered.txt'
+species_ordered = [line.strip() for line in open(file, 'r')]
+
+## -------------------------------
+## list operations
+## -------------------------------
+
+# shuffle a list, generally (acts in place):
+random.shuffle(alist)
+
+# shuffle a list keeping the original list order:
+alist = [1, 4, 65, 3, 8, 9]
+idx2shuffle = list(range(len(test)))
+random.shuffle(idx2shuffle)
+shuffled = [alist[i] for i in idx2shuffle]
+
+# flatten a list of lists:
+flat_list = [item for sublist in l for item in sublist]
+
+## -------------------------------
+## general pandas data frame operations
+## -------------------------------
+
+# set index by column name
+df.set_index('orthogroup', inplace=True)
+
+# reset index by column name
+df.reset_index(inplace=True)
+
+# convert a single col type to integer
+df['value'] = df['value'].astype(int)
+
+# convert all columns to integers
+df = df.astype(int)
+
+# format/clean bad col headers
+df.columns = [str(i) for i in df.columns.values.tolist()]
+
+# convert all NAs (NaNs) to 0
+df.fillna(0, inplace=True)
+
+# convert NAs for a single col to 0
+df['value'] = df['value'].fillna(0, inplace=True)
+
+# drop rows with NAs
+df.dropna(inplace=True)
+
+# drop cols with NAs
+df.dropna(axis='columns', inplace=True)
+
+# get all non-NA rows
+rows = df[~df.col.isnull()]
+
+# get unique column values
+df = df[['ID']].drop_duplicates()
+
+# get unique column values as a series
+df['col'].unique()
+
+## -------------------------------
+## select pandas columns
+## -------------------------------
+
+# as a series
+ids_series = df['ID']
+
+# as a column
+ids_col = df[['ID']]
+
+# by index as a series (first col)
+df.iloc[:, 0]
+
+# by index as a dataframe (first col)
+df.iloc[:, :1]
+
+# range of columns
+df.iloc[:, 0:10]
+
+## -------------------------------
+## drop pandas columns
+## -------------------------------
+
+df.drop(['ID1', 'ID2'], axis=1, inplace=True)
+
+## -------------------------------
+## split pandas columns
+## -------------------------------
+
+df[['A', 'B']] = df['AB'].str.split(delimiter, expand=True)
+
+## -------------------------------
+## filter pandas columns
+## -------------------------------
+
+# for a specific value
+value = 'ENOG502QPPX'
+df_filt = df.query("ID == 'ENOG502QPPX'")
+df_filt = df.query("ID == @value")
+df_filt = df.loc[df['ID'] == value]
+df_filt = df[df['ID'] == value]
+
+# for a list of values
+values = ['ENOG502QPPX', 'ENOG502QPUP', 'ENOG502STZ2']
+df_filt = df.query("ID in ('ENOG502QPPX', 'ENOG502QPUP', 'ENOG502STZ2')")
+df_filt = df.query("ID in @values")
+df_filt = df.loc[df['ID'].isin(values)]
+df_filt = df[df['ID'].isin(values)]
+
+# string matching
+df_filt = df[df['ID'].str.contains('STZ')]
+df_filt = df[df['ID'].str.startswith('ENOG')]
+
+# by row
+df.apply(lambda row: row[df['ID'].isin(['ENOG502QPPX', 'ENOG502QPUP', 'ENOG502STZ2'])])
+
+## -------------------------------
+## joining (merging) pandas columns
+## -------------------------------
+
+# using join
+df1 = df1.set_index('ID')
+df2 = df2.set_index('ID')
+df_joined = df1.join(df2, how='outer') # full join
+df_joined.reset_index(inplace=True)
+
+# using merge (when you don't want to join on index)
+df_joined = df1.merge(df2, how='outer', left_on=['ID'], right_on=['ID'])  # full join
+df_joined = left_df.merge(right_df, on='ID', how='left')  # left join
+
+# merging a list of dfs (requires functools library)
+from functools import reduce
+reduce(lambda x, y: pd.merge(x, y, on = 'ID'), dfList)
+
+# bind rows
+df = pd.concat(df_list, ignore_index=True, sort=False)
+
+## -------------------------------
+## group & aggregate pandas columns
+## -------------------------------
+
+# count number of occurrences per group
+dfg = df.groupby(['ID']).size()
+
+# count number of occurrences per variable per group
+dfg = df.groupby(['ID']).count().sort_values(by=['ProteinID'], ascending=False)
+
+# write strings to comma-separated list in new column
+df.groupby('A', as_index=False).agg(lambda x: ', '.join(set(str(x.dropna())))
+
+# multiple summary stats (nicer col header output)
+gb = res.groupby(['feature'])
+counts = gb.size().to_frame(name='counts')
+(counts
+ .join(gb.agg({'mdi': 'mean'}).rename(columns={'mdi': 'mean_mdi'}))
+ .join(gb.agg({'mdi': 'min'}).rename(columns={'mdi': 'min_mdi'}))
+ .join(gb.agg({'mdi': 'max'}).rename(columns={'mdi': 'max_mdi'}))
+ .sort_values(['counts', 'mean_mdi'], ascending=[False, False])
+ .reset_index()
+)
+
+# compute values row-wise
+final_df['mean_family_size'] = final_df.mean(axis=1)
+final_df['median_family_size'] = final_df.median(axis=1)
+
+# shuffle groups
+import random
+grps = df['group'].unique()
+random.shuffle(grps)
+df = df.set_index('group').loc[grps].reset_index()
+
+## -------------------------------
+## timing a script
+## -------------------------------
+
+import time
+t0 = time.time()
+run_function1()
+run_function2()
+print(f"Functions completed in {time.time() - t0} seconds")
+
+## -------------------------------
+## error handling
+## -------------------------------
+
+## one way
+# does chr c have any SNPs?
+# if not, break loop and go to next
+if len(count_df) == 0:
+    continue
+
+## another way
+try:    
+    num_snps = count_df.iat[0,0]
+except IndexError:
+    # No SNPs in this file, continue
+    continue
+
+## -------------------------------
+## get file directory path
+## -------------------------------
+
+# using os
+import os
+path, fname = os.path.split(infile)
+
+# using split
+pathlist = infile.split('/', -1)
+path = '/'.join(pathlist[:-1])+'/'
+fname = pathlist[-1]
+
+## -------------------------------
+## read in csv with progress bar
+## -------------------------------
+
+from tqdm import tqdm
+def read_csv_pgbar(csv_path, chunksize, dtype=object):
+ 
+    rows = sum(1 for _ in open(csv_path, 'r')) - 1 # minus the header
+    chunk_list = []
+ 
+    with tqdm(total=rows, desc='Rows read: ') as bar:
+        for chunk in pd.read_csv(csv_path, chunksize=chunksize,
+                                 dtype=dtype):
+            chunk_list.append(chunk)
+            bar.update(len(chunk))
+ 
+    df = pd.concat((f for f in chunk_list), axis=0)
+    print('Done!')
+ 
+    return df
+
+## -------------------------------
+## mapping values for 100s of millions of rows
+## -------------------------------
+
+import pandas as pd
+def make_lookup(label_file)
+    
+    df = pd.read_csv(label_file)
+    df["pair"] = [frozenset({i, j}) for i, j in zip(df["ID1"], df["ID2"])]
+    
+    label_dict = dict()
+    issues = []
+    dupes = []
+    for i in range(len(df)):
+        key = df["pair"][i]
+        if key not in label_dict.keys():
+            label_dict.update({key: df["label"][i]})
+        else:
+            if df["label"][i] != label_dict[key]:
+                issues.append(key)
+                label_dict.pop(key)
+            if key not in dupes:
+                dupes.append(key)
+    
+    print(f"# issues: {len(issues)}")
+    print(f"# dupes: {len(dupes)}")
+
+    return label_dict
+
+def match_label(x, label_dict):
+    if x in label_dict.keys():
+        return label_dict[x]
+    else:
+        return -1
+
+def main()
+    
+    cxf_dict = {-1: 0, 0: 1., 1: 0.5, 2: 0.25, 3: 0.125}
+
+    fmat["label"] = [match_degree(frozenset({i, j}), label_dict) for i, j in zip(fmat["ID1"], fmat["ID2"])]
+
+    fmat["coef"] = [cxf_dict[i] for i in df["degree"]]
+
+    return fmat
+
+## -------------------------------
+## tally number of a var for each group
+## -------------------------------

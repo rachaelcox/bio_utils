@@ -1,0 +1,243 @@
+################################################
+# environment set up
+################################################
+
+# -----------------------
+# seting up ssh keys
+# -----------------------
+# use case: don't have to type my long ass password every day
+# arguments and modifiers for `ssh-keygen` algorithms may vary by server
+
+### example (rsa):
+cd ~/.ssh
+chmod 700 ~/.ssh
+ssh-keygen -b 4096 -t rsa
+cat ~/.ssh/id_rsa.pub  # copy public key
+# ---> ssh to server
+ssh rmcox@hopper.icmb.utexas.edu
+cd ~/.ssh
+vim authorized_keys # paste in public key
+chmod 600 authorized_keys # make sure permissions are correct
+
+### example (ed25519):
+cd ~/.ssh
+ssh-keygen -t ed25519 -C rachael.cox@invitae.com
+cat ~/.ssh/id_ed25519.pub  # copy the public key
+# ---> ssh to server
+ssh racox@purine-18.clvr.locusdev.net
+cd ~/.ssh
+vim authorized_keys # paste in public key
+chmod 600 authorized_keys # make sure permissions are correct
+
+### example (git):
+# generate keys
+cd ~/.ssh
+ssh-keygen -t ed25519 -C your_email@example.com
+cat ~/.ssh/id_ed25519.pub  # copy this public key
+
+# alternatively, if on legacy system, use ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+q
+# need to add identities for github:
+# apparently have to run this everytime, so i added to my .bashrc
+eval $(ssh-agent -s)
+ssh-add ~/.ssh/id_ed25519  # ed
+ssh-add ~/.ssh/id_rsa  # or rsa
+
+
+cat ~/.ssh/id_ed25519.pub  # copy the public key
+# ---> log into github.com
+# ---> settings > ssh and gpg keys
+# ---> add public key
+
+# within a git repo, may also need to run these guys:
+git config user.name = rachaelcox
+git config user.email = rachaelcox@utexas.edu
+
+# if it keeps asking for your username, then you may have to edit the remote origin url so that's SSH (e.g., git@github.com:marcottelab/leca-proteomics.git) and not HTTPS (e.g., https://github.com/marcottelab/leca-proteomics.git)
+# do this from within the repo
+vim .git/config
+
+# -----------------------
+# set up server alias(es)
+# -----------------------
+# use case: don't have to type these long ass hostnames every day
+# on your **local** machine, do:
+vim ~/.zshrc # on mac, or
+vim ~/.bashrc # on linux
+	# add the following text at the bottom:
+	# aliases
+	alias clvr='ssh racox@purine-18.clvr.locusdev.net'
+	alias hopper='ssh rmcox@hopper.icmb.utexas.edu'
+
+# -----------------------
+# set up conda env
+# -----------------------
+# use case: persistent project-specific environments
+# use case: don't have to manually install things that exist on conda
+# use case: don't have to ask sys admins to install things for me that have weird build requirements (...as much)
+# use case: jupyter inherits envrionment from which it is launched <3
+
+# get miniconda
+cd ~
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh # mac
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh # linux
+
+# install (assuming a linux environment)
+bash Miniconda3-latest-Linux-x86_64.sh  # follow prompts, etc
+source ~/.bashrc  # activate path changes
+conda list  # make sure it worked (will give a 'command not found' error if it didn't)
+
+# create environment with name 'myenv'
+conda create -n myenv python=3.9
+
+# activate environment
+conda activate myenv
+
+# create persistent tmux environment (until next maintenance anyway)
+tmux new  # new session
+tmux new -s my-session # new session named 'my-session'
+conda activate myenv # now conda environment is persistent with tmux
+tmux a # reattach to previous session (first command after logging in errday)
+
+	# other tmux things:
+	<ctrl> + <b>, <]>;  # enable scrolling (copy/paste allowed)
+	<ctrl> + <b>, <c>;  # create new tab within tmux session
+	<ctrl> + <b>, <n>;  # go to next tab within tmux session
+	<ctrl> + <b>, <p>;  # go to previous tab within tmux session
+	<ctrl> + <b>, <d>;  # detach from session
+	<q>;  # quit doing a window thing
+	tmux ls  # list all sessions
+	set -g mouse on  # enable scrolling (can't copy/paste)
+	tmux kill-session -a  # kill all tmux sessions except current one
+	# see also: https://tmuxcheatsheet.com/
+
+# can add these or specify with '-c' on a case-by-case basis
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
+
+# install mamba because conda sucks
+conda install -c conda-forge mamba
+
+# get jupyter notebook
+mamba install -c conda-forge notebook
+
+# get jupyter lab (basically the beta version of jupyter notebook 2.0)
+mamba install -c conda-forge jupyterlab
+
+# get R for jupyter 
+mamba install -c r r r-essentials
+conda install -c r r r-essentials # has to be conda for... reasons
+
+# get snowflake access for jupyter (SQL)
+mamba install snowflake-connector-python
+
+# get bedtools
+mamba install -c bioconda bedtools
+
+# when conda/mamba is not an option
+# local dir for "dev" env: ~/miniconda3/envs/dev/pkgs/
+conda install -p ~/miniconda3/envs/dev/pkgs/ unipressed
+
+# -----------------------
+# remote jupyter access
+# -----------------------
+# activate 
+# initialize jupyter notebook from remote server 
+jupyter notebook --ip "*" --no-browser
+
+jupyter notebook --ip=0.0.0.0 --no-browser
+
+# make sure to launch from desired directory or include --notebook-dir arg:
+jupyter lab --ip=0.0.0.0 --no-browser --notebook-dir /stor/work/Marcotte/project/rmcox/leca/
+jupyter lab --ip=0.0.0.0 --no-browser --notebook-dir /stor/work/Marcotte/project/rmcox/deBruijn_graphs/
+jupyter lab --ip=0.0.0.0 --no-browser --notebook-dir /stor/work/Marcotte/project/rmcox/github_repos/leca-proteomics/
+
+# set up an ssh tunnel (just have to do once?) aka port forwarding:
+ssh -NfL localhost:8888:localhost:8888 rmcox@hfogcomp01.ccbb.utexas.edu
+ssh -NfL localhost:8889:localhost:8889 rmcox@hopper.icmb.utexas.edu
+
+# alternatively, edit ssh config to include auto-tunneling
+vim ~/.ssh/config
+# add for myuser@host:
+Host notebooks
+    HostName host
+    User myuser
+    LocalForward 8888 localhost:8888
+
+# then you can run this
+http://localhost:8888/?token=<token_given_by_server_launch_cmd>
+
+# stop process on remote server: <ctrl+C> then Y
+# stop process locally:
+sudo netstat -lpn | grep :8888 # this will show the process ID (PID), e.g. ABCDEF of the one running in 9999
+kill ABCDEF
+
+# somehow I did this slightly differently during my internship 
+jupyter lab --ip=0.0.0.0 --no-browser --collaborative
+
+	# copy and paste this:
+	http://127.0.0.1:8891/?token=483d1e77c56e4eec1db7bd78e457fd9782cce1a87637cfdb
+
+	# replace IP (127.0.0.1) with:
+	purine-18.clvr.locusdev.net  # this will be specific to your server
+
+	# final:
+	http://purine-18.clvr.locusdev.net:8891/?token=483d1e77c56e4eec1db7bd78e457fd9782cce1a87637cfdb
+
+# -----------------------
+# set up git version control
+# -----------------------
+
+# on github, create a new repository under the desired account/organization
+# to avoid erros, do not initialize the new repository with README, license, or gitignore files (can add these later)
+# after creation, github will offer you quick set up options
+# use the code snippet under "create a new repository on the command line" or "push an existing repository from the command line":
+
+# initialize the local directory as a git repo
+git init
+echo "# LECA Proteomics" >> README.md
+
+# or
+git remote add origin git@github.com:marcottelab/leca-proteomics.git
+
+# set up .gitignore (important for big files)
+vim .gitignore
+# workflow-specific things to ignore, these are common for R and Python (see here for language-specific templates: https://github.com/github/gitignore):
+.ipynb_checkpoints
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.Rhistory
+.Rapp.history
+.RData
+.RDataTmp
+*.utf8.md
+*.knit.md
+# add files/dirs with big files:
+data/
+results/
+
+# stage & commit all the files **MAKE SURE GITIGNORE IS GOOD TO GO BEFORE RUNNING**
+git add . && git commit -m "initial commit"
+git branch -M main
+
+git push -u origin main
+
+# ssh clone
+ssh-agent bash -c 'ssh-add ~/.ssh/id_ed25519; git clone git@github.com:yaviddang20/cilia_xlink_new.git'
+
+# stage removed files for commit
+git rm $(git ls-files --deleted)
+
+# get differences between remote and local file
+git diff origin/main -- scripts/predict_ppis.py
+
+# -----------------------
+# other notes
+# -----------------------
+
+# track repo size
+du -sh --max-depth=2 . > du.010122
